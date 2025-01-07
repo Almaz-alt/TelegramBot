@@ -141,7 +141,7 @@ venv.bak/
 
 # mkdocs документация
 /сайт
-
+.idea
 # мойпи
 .mypy_cache/
 .dmypy.json

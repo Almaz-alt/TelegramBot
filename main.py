@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bot = Bot(token=token)
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 names = ['dfd', 'dfdf', 'dfdfd']
 

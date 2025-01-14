@@ -1,40 +1,43 @@
-from aiogram.enums import ParseMode
+from aiogram import Router, F, types
+from aiogram.filters import Command
 
-import random
-import logging
-from aiogram import types, Bot, Dispatcher, executor
-from aiogram.enums import ParseMode  # Исправленный импорт
 
-API_TOKEN = 'YOUR_API_TOKEN_HERE'
+start_router = Router()
 
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher(bot)
 
-recipes = {
-    "салат": "Рецепт: Смешать овощи, приправить маслом.",
-    "борщ": "Рецепт: Варить свеклу, добавить капусту и мясо."
-}
+@start_router.message(Command("start"))
+async def start_handler(message: types.Message):
+    name = message.from_user.first_name
+    # message.from_user.id
+    # await message.answer(f"Привет, {name}")
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="Наш сайт", url="https://geeks.kg"),
+                types.InlineKeyboardButton(text="Наш инстаграм", url="https://instagram.com")
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="О нас", callback_data="about_us"
+                )
+            ]
+        ]
+    )
+    await message.answer(f"Привет, {name}", reply_markup=kb)
 
-async def start_command(message: types.Message):
-    await message.answer("Добро пожаловать в наш ресторан! Как мы можем помочь вам?")
 
-async def menu_command(message: types.Message):
-    await message.answer("Вот наше меню: 1. Салат 2. Борщ")
+@start_router.callback_query(F.data == "about_us")
+async def about_us_handler(callback: types.CallbackQuery):
+    # await callback.answer("Мы - магазин книг")
+    await callback.message.answer("Мы - магазин книг")
 
-async def random_recipe_command(message: types.Message):
-    dish = random.choice(list(recipes.keys()))
-    caption = recipes[dish]
-    await message.answer_photo(photo=f'images/{dish}.jpg', caption=caption)
+from aiogram import Router, F, types
 
-dp.register_message_handler(start_command, commands=['start'])
-dp.register_message_handler(menu_command, commands=['menu'])
-dp.register_message_handler(random_recipe_command, commands=['random_recipe'])
 
-logging.basicConfig(level=logging.INFO)
+catalog_router = Router()
 
-async def main():
-    await dp.start_polling()
-
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+@catalog_router.callback_query(F.data == "catalog")
+async def about_us_handler(callback: types.CallbackQuery):
+    # await callback.answer("Мы - магазин книг")
+    await callback.answer()
+    await callback.message.answer("Наш каталог книг")

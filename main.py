@@ -7,6 +7,7 @@ from bot_config import bot, dp
 
 from handles.start import start_router
 from handles.mainfo import myinfo_router
+from handles.review_dialog import review_router
 # from handles.random import random_name_router
 # from handles.random_recipe import random_recipe_router
 
@@ -15,6 +16,7 @@ async def main():
 
     dp.include_router(start_router)
     dp.include_router(myinfo_router)
+    dp.include_router(review_router)
     # dp.include_router(random_name_router)
     # dp.include_router(random_recipe_router)
     logging.basicConfig(level=logging.INFO)

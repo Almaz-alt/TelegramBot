@@ -1,7 +1,6 @@
 from aiogram import Router, types
 from aiogram.filters import Command
 
-
 myinfo_router = Router()
 
 

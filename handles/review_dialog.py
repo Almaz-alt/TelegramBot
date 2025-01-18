@@ -1,69 +1,52 @@
-from aiogram import Router, types,F
+from aiogram import Router, types, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State,StatesGroup
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import InlineKeyboardMarkup
 
-review_router = Router()
+router = Router()
 
-class RestaurantReview(StatesGroup):
+
+class Review(StatesGroup):
     name = State()
     contact = State()
     rate = State()
-    extra_comments = State()
+    comment = State()
+    date = State()
 
 
-user_reviews = set()
+rating_kb = InlineKeyboardMarkup(inline_keyboard=[
+    [types.InlineKeyboardButton(text='1', callback_data='rate:1'),
+     types.InlineKeyboardButton(text='2', callback_data='rate:2'),
+     types.InlineKeyboardButton(text='3', callback_data='rate:3'),
+     types.InlineKeyboardButton(text='4', callback_data='rate:4'),
+     types.InlineKeyboardButton(text='5', callback_data='rate:5'), ],
+])
 
 
-@review_router.callback_query(F.data=="review")
-async def start_review(callback: types.CallbackQuery, state: FSMContext):
-    if callback.from_user.id in user_reviews:
-        await callback.message.answer("Вы уже оставляли отзыв. Спасибо!")
-        await state.clear()
-    else:
-        await callback.message.answer("Как вас зовут?")
-        await state.set_state(RestaurantReview.name)
+@router.callback_query(F.data == 'review')
+async def start_review(call: types.CallbackQuery, state: FSMContext):
+    await call.message.answer("Оцените ваш опыт от 1 до 5:", reply_markup=rating_kb)
+    await state.set_state(Review.rate)
 
 
-@review_router.message(RestaurantReview.name)
-async def handle_name(message: types.Message, state: FSMContext):
-    await state.update_data(name=message.text)
-    await message.answer("Пожалуйста, укажите ваш номер телефона или имя пользователя в Instagram:")
-    await state.set_state(RestaurantReview.contact)
+@router.callback_query(Review.rate)
+async def rating_chosen(callback: types.CallbackQuery, state: FSMContext):
+    rating = int(callback.data.split(":")[1])
+    await state.update_data(rating=rating)
+    await callback.message.edit_text(f"Вы выбрали оценку: {rating}\nНапишите ваш комментарий:")
+    await state.set_state(Review.comment)
 
 
-@review_router.message(RestaurantReview.contact)
-async def handle_contact(message: types.Message, state: FSMContext):
-    await state.update_data(contact=message.text)
-    await message.answer("Поставьте нам оценку от 1 до 5:")
-    await state.set_state(RestaurantReview.rate)
+@router.message(Review.comment)
+async def comment_received(message: types.Message, state: FSMContext):
+    await state.update_data(comment=message.text)
+    await message.answer("Укажите дату посещения (например, 2023-12-31)")
+    await state.set_state(Review.date)
 
 
-@review_router.message(RestaurantReview.rate)
-async def handle_rate(message: types.Message, state: FSMContext):
-    if message.text.isdigit() and 1 <= int(message.text) <= 5:
-        await state.update_data(rate=message.text)
-        await message.answer("Есть ли у вас дополнительные комментарии или жалобы? (если нет, просто напишите \"нет\")")
-        await state.set_state(RestaurantReview.extra_comments)
-    else:
-        await message.answer("Пожалуйста, укажите число от 1 до 5.")
-
-
-@review_router.message(RestaurantReview.extra_comments)
-async def handle_extra_comments(message: types.Message, state: FSMContext):
-    await state.update_data(extra_comments=message.text)
-    data = await state.get_data()
-
-    review_text = (
-        f"Спасибо за ваш отзыв!\n"
-        f"Имя: {data['name']}\n"
-        f"Контакт: {data['contact']}\n"
-        f"Оценка: {data['rate']}\n"
-        f"Комментарии: {data['extra_comments']}"
-    )
-
-    await message.answer(review_text)
-
-    user_reviews.add(message.from_user.id)
-
+@router.message(Review.date)
+async def date_received(message: types.Message, state: FSMContext):
+    await state.update_data(date=message.text)
+    await message.answer("Спасибо за ваш отзыв!")
     await state.clear()

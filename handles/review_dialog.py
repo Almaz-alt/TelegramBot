@@ -1,52 +1,108 @@
-from aiogram import Router, types, F
+from aiogram import Router, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup
 
-router = Router()
+from database import Database
+from dp_config import database
+
+review_router = Router()
 
 
-class Review(StatesGroup):
+class CafeReview(StatesGroup):
     name = State()
-    contact = State()
-    rate = State()
-    comment = State()
     date = State()
+    phone_number = State()
+    rate = State()
+    extra_comments = State()
 
 
-rating_kb = InlineKeyboardMarkup(inline_keyboard=[
-    [types.InlineKeyboardButton(text='1', callback_data='rate:1'),
-     types.InlineKeyboardButton(text='2', callback_data='rate:2'),
-     types.InlineKeyboardButton(text='3', callback_data='rate:3'),
-     types.InlineKeyboardButton(text='4', callback_data='rate:4'),
-     types.InlineKeyboardButton(text='5', callback_data='rate:5'), ],
-])
+@review_router.message(Command("stop"))
+@review_router.message(F.text == "стоп")
+async def stop_dialog(message: types.Message, state: FSMContext):
+    await message.answer("Диалог остановлен")
+    await state.clear()
 
 
-@router.callback_query(F.data == 'review')
-async def start_review(call: types.CallbackQuery, state: FSMContext):
-    await call.message.answer("Оцените ваш опыт от 1 до 5:", reply_markup=rating_kb)
-    await state.set_state(Review.rate)
+reviewed_users = []
 
 
-@router.callback_query(Review.rate)
-async def rating_chosen(callback: types.CallbackQuery, state: FSMContext):
-    rating = int(callback.data.split(":")[1])
-    await state.update_data(rating=rating)
-    await callback.message.edit_text(f"Вы выбрали оценку: {rating}\nНапишите ваш комментарий:")
-    await state.set_state(Review.comment)
+@review_router.callback_query(F.data == "review")
+async def start_review(callback: types.CallbackQuery, state: FSMContext):
+    id_user = callback.from_user.id
+    if id_user in reviewed_users:
+        await callback.message.answer('Нельзя оставлять отзыв более одного раза')
+        await state.clear()
+        return
+    await callback.message.answer("Оставьте отзыв ответив на несколько вопросов. Можете остановить "
+                                  "диалог с ботом введя '/stop' или 'стоп'")
+    await callback.message.answer("Как вас зовут?")
+    await state.set_state(CafeReview.name)
 
 
-@router.message(Review.comment)
-async def comment_received(message: types.Message, state: FSMContext):
-    await state.update_data(comment=message.text)
-    await message.answer("Укажите дату посещения (например, 2023-12-31)")
-    await state.set_state(Review.date)
+@review_router.message(CafeReview.name)
+async def process_name(message: types.Message, state: FSMContext):
+    name = message.text
+    await state.update_data(name=name)
+    await message.answer("Напишите сегодняшнюю дату")
+    await state.set_state(CafeReview.date)
+
+@review_router.message(CafeReview.date)
+async def process_date(message: types.Message, state: FSMContext):
+    date = message.text
+    await state.update_data(date=date)
+    await message.answer("Напишите вашу номер телефона")
+    await state.set_state(CafeReview.phone_number)
 
 
-@router.message(Review.date)
-async def date_received(message: types.Message, state: FSMContext):
-    await state.update_data(date=message.text)
-    await message.answer("Спасибо за ваш отзыв!")
+@review_router.message(CafeReview.phone_number)
+async def process_number(message: types.Message, state: FSMContext):
+    phone_number = message.text
+    await state.update_data(phone_number=phone_number)
+    kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(
+                    text="1", callback_data="rating:1"
+                ),
+                types.InlineKeyboardButton(
+                    text="2", callback_data="rating:2"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="3", callback_data="rating:3"
+                ),
+                types.InlineKeyboardButton(
+                    text="4", callback_data="rating:4"
+                )
+            ],
+            [
+                types.InlineKeyboardButton(
+                    text="5", callback_data="rating:5"
+                )
+            ]
+        ]
+    )
+    await message.answer("поставьте нам оценку от 1 до 5", reply_markup=kb)
+    await state.set_state(CafeReview.rate)
+
+
+@review_router.callback_query(CafeReview.rate)
+async def process_rate(callback: types.CallbackQuery, state: FSMContext):
+    rate = callback.data
+    await state.update_data(rate=rate)
+    await callback.message.answer("Дополнительные комментарии или жалоба")
+    await state.set_state(CafeReview.extra_comments)
+
+
+@review_router.message(CafeReview.extra_comments)
+async def process_comments(message: types.Message, state: FSMContext):
+    extra_comments = message.text
+    await state.update_data(extra_comments=extra_comments)
+    data = await state.get_data()
+    await message.answer("Спасибо за вашу отзыв")
+    reviewed_users.append(message.from_user.id)
+    print(data)
+    database.save_reviews(data)
     await state.clear()

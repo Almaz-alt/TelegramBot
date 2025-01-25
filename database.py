@@ -1,20 +1,61 @@
 import sqlite3
 
 
-class database:
+class Database:
     def __init__(self, path: str):
         self.path = path
 
     def create_tables(self):
-        with sqlite3.connect("db.sqlite") as conn:
-                cursor = conn.cursor()
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS           
-                    complaints(
-                    id INTEGER PRIMARY KEY 
-                    AUTOINCREMENT,
-                    name TEXT,
-                    age INTEGER,
-                    complaint TEXT, 
-                    )            
-                """)
+        with sqlite3.connect(self.path) as connection:
+            cursor = connection.cursor()
+            connection.execute("""
+            CREATE TABLE IF NOT EXISTS reviews(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(200),
+            date DATA,
+            phone_number VARCHAR(200),
+            rate INTEGER,
+            extra_comments TEXT
+            )
+            """)
+
+            connection.execute("""
+            CREATE TABLE IF NOT EXISTS dishes(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name VARCHAR(200),
+            price INTEGER,
+            description TEXT,
+            category TEXT,
+            serving_options TEXT
+            )
+            """)
+
+    def save_reviews(self, data: dict):
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                """ 
+                        INSERT INTO reviews(name, date, phone_number, rate, extra_comments)
+                        VALUES (?, ?, ?, ?, ?)
+                    """,
+                (data["name"], (data["date"]), data["phone_number"], data["rate"],
+                 data["extra_comments"])
+            )
+
+    def save_dishes(self, data: dict):
+        with sqlite3.connect(self.path) as connection:
+            connection.execute(
+                """
+                        INSERT INTO dishes(name, price, description, category, serving_options)
+                        VALUES (?, ?, ?, ?, ?)
+                    """,
+                (data["name"], data["price"], data["description"], data["category"],
+                 data["serving_options"])
+            )
+
+    def get_dishes(self):
+        with sqlite3.connect(self.path) as connection:
+            cursor = connection.cursor()
+            result = connection.execute("SELECT * FROM dishes")
+            result.row_factory = sqlite3.Row
+            data = result.fetchall()
+            return [dict(row) for row in data]

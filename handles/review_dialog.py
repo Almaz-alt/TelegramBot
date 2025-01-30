@@ -3,8 +3,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from database import Database
-from dp_config import database
+from bot_config import database
 
 review_router = Router()
 
@@ -46,6 +45,7 @@ async def process_name(message: types.Message, state: FSMContext):
     await state.update_data(name=name)
     await message.answer("Напишите сегодняшнюю дату")
     await state.set_state(CafeReview.date)
+
 
 @review_router.message(CafeReview.date)
 async def process_date(message: types.Message, state: FSMContext):
@@ -105,4 +105,14 @@ async def process_comments(message: types.Message, state: FSMContext):
     reviewed_users.append(message.from_user.id)
     print(data)
     database.save_reviews(data)
-    await state.clear()
+
+    try:
+
+        database.save_review(data)
+        await message.answer(f"Спасибо за ваш отзыв, {data['name']}!")
+        await state.clear()
+
+    except Exception as e:
+        await message.answer("Произошла ошибка при сохранении отзыва. Пожалуйста, попробуйте позже.")
+        print(f"Error saving review: {e}")
+        await state.clear()

@@ -1,5 +1,5 @@
 from aiogram import Router, types, F
-from dp_config import database
+from bot_config import database
 
 dishes_router = Router()
 

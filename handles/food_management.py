@@ -4,8 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import InlineKeyboardMarkup
 
-from database import Database
-from dp_config import database
+from bot_config import database
 
 food_admin_router = Router()
 
